@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>健康リブート</title>
+<link rel="manifest" href="./manifest.json">
 <style>
 body{font-family:system-ui,-apple-system,"Yu Gothic",sans-serif;max-width:760px;margin:0 auto;padding:20px;background:#f6f7f4;color:#333}
 h1{font-size:28px;margin:0 0 5px}.sub{color:#777;margin-bottom:18px}
@@ -90,6 +91,7 @@ function generateMD(){document.getElementById("output").textContent=mdText()}
 async function copyMD(){const t=mdText();try{await navigator.clipboard.writeText(t);document.getElementById("output").textContent=t;alert("MDをコピーしました")}catch(e){document.getElementById("output").textContent=t;alert("コピーできませんでした。表示されたMDをコピーしてください。")}}
 function downloadMD(){const t=mdText(),blob=new Blob([t],{type:"text/markdown;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="健康リブート_"+key(selectedWeek)+".md";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)}
 render();document.getElementById("memo").addEventListener("input",saveMemo);
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));}
 </script>
 </body>
 </html>
