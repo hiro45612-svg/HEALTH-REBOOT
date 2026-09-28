@@ -1,0 +1,9 @@
+{
+  "name": "健康リブート",
+  "short_name": "健康リブート",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#333333",
+  "lang": "ja"
+}
