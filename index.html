@@ -41,11 +41,11 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
     <button class="action" onclick="copyMD()">📋 コピー</button>
     <button class="action" onclick="downloadMD()">⬇️ MD保存</button>
   </div>
-  <div class="hint">入力内容はこのブラウザに自動保存されます。週が変わっても前週の記録は残ります。</div>
+  <div class="hint">各ボタンは2択です。タップするたびに「○＝できた／空欄＝もう一方」に切り替わります。入力内容はこのブラウザに自動保存されます。</div>
 </div>
 <div class="card">
   <b>項目</b>
-  <div style="margin-top:10px;line-height:1.9">🐟 魚を食べた　　🚶 歩いた・運動した<br>🍺 飲酒　　　　　🩺 血圧を測った<br>🍽️ 食生活を意識できた</div>
+  <div style="margin-top:10px;line-height:1.9">🐟 魚を食べた　　🚶 歩いた・運動した<br>🍺 休肝日　　　　🩺 血圧を測った<br>🍽️ 食生活を意識できた</div>
 </div>
 <div class="card">
   <b>📝 今週のひとこと</b>
@@ -54,8 +54,20 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
 </div>
 <div class="card"><b>生成されるMD</b><pre id="output">「週間MDを生成」を押してください。</pre></div>
 <script>
-const items=[["🐟","魚を食べた"],["🚶","歩いた・運動した"],["🍺","飲酒"],["🩺","血圧を測った"],["🍽️","食生活を意識できた"]];
+const items=[["🐟","魚を食べた"],["🚶","歩いた・運動した"],["🍺","休肝日"],["🩺","血圧を測った"],["🍽️","食生活を意識できた"]];
 let data=JSON.parse(localStorage.getItem("healthRebootV2")||"{}");
+if(!localStorage.getItem("healthRebootV3Migrated")){
+  Object.keys(data).forEach(k=>{
+    if(data[k]&&data[k][2]){
+      data[k][2]=data[k][2]==="×"?"○":"";
+    }
+    for(let j=0;j<5;j++){
+      if(j!==2 && data[k] && data[k][j]!=="○") data[k][j]="";
+    }
+  });
+  localStorage.setItem("healthRebootV2",JSON.stringify(data));
+  localStorage.setItem("healthRebootV3Migrated","1");
+}
 let selectedWeek=startOfWeek(new Date());
 function key(d){return d.toISOString().slice(0,10)}
 function fmt(d){return d.getMonth()+1+"/"+d.getDate()}
@@ -67,10 +79,10 @@ function render(){
  const box=document.getElementById("days");box.innerHTML="";
  for(let i=0;i<7;i++){const d=new Date(selectedWeek);d.setDate(d.getDate()+i);const k=key(d);if(!data[k])data[k]={};
   const row=document.createElement("div");row.className="row";row.innerHTML='<div class="date">'+fmt(d)+'</div><div class="checks"></div>';const grid=row.querySelector(".checks");
-  items.forEach(([icon,name],idx)=>{const b=document.createElement("button");const v=data[k][idx]||"";b.className="btn";b.textContent=icon;if(v==="○"||v==="×")b.classList.add("active");if(v==="－")b.classList.add("dash","active");b.title=name+": "+(v||"未入力");b.onclick=()=>cycle(k,idx);grid.appendChild(b)});box.appendChild(row)}
+  items.forEach(([icon,name],idx)=>{const b=document.createElement("button");const v=data[k][idx]||"";b.className="btn";b.textContent=icon;if(v==="○")b.classList.add("active");b.title=name+": "+(v==="○"?"○":"空欄");b.onclick=()=>cycle(k,idx);grid.appendChild(b)});box.appendChild(row)}
  loadMemo();
 }
-function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v===""?"○":v==="○"?"×":v==="×"?"－":"";localStorage.setItem("healthRebootV2",JSON.stringify(data));render()}
+function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v==="○"?"":"○";localStorage.setItem("healthRebootV2",JSON.stringify(data));render()}
 function moveWeek(n){selectedWeek=new Date(selectedWeek);selectedWeek.setDate(selectedWeek.getDate()+n*7);document.getElementById("output").textContent="「週間MDを生成」を押してください。";render()}
 function getCounts(week){const counts=[0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<5;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
 function saveMemo(){const memo=document.getElementById("memo");if(memo)localStorage.setItem("healthRebootMemo_"+weekKey(),memo.value)}
@@ -81,7 +93,7 @@ function mdText(){
  s+="| 日付 | 🐟 | 🚶 | 🍺 | 🩺 | 🍽️ |\n|---|---|---|---|---|---|\n";
  for(let i=0;i<7;i++){const d=new Date(selectedWeek);d.setDate(d.getDate()+i);const k=key(d);const vals=[0,1,2,3,4].map(j=>data[k]?.[j]||"");s+="| "+fmt(d)+" | "+vals.join(" | ")+" |\n"}
  s+="\n## 週間集計\n\n| 項目 | 今週 | 先週 | 差 |\n|---|---:|---:|---:|\n";
- const names=["🐟 魚","🚶 運動","🍺 飲酒","🩺 血圧","🍽️ 食生活"];
+ const names=["🐟 魚","🚶 運動","🍺 休肝日","🩺 血圧","🍽️ 食生活"];
  for(let j=0;j<5;j++){const diff=counts[j]-prevCounts[j],sign=diff>0?"+":"";s+="| "+names[j]+" | "+counts[j]+"日 | "+prevCounts[j]+"日 | "+sign+diff+" |\n"}
  s+="\n## 📝 今週のひとこと\n\n"+(memo.trim()?memo.trim():"（なし）")+"\n";
  s+="\n## ちゃぴこレビュー用\n\nこの1週間の健康リブートをレビューしてください。\n先週との変化、できたこと、気になる傾向、来週に意識することを簡潔にコメントしてください。\n";
