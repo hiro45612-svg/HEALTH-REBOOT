@@ -104,7 +104,7 @@ function render(){
 }
 function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v==="○"?"":"○";localStorage.setItem("healthRebootV2",JSON.stringify(data));render()}
 function moveWeek(n){selectedWeek=new Date(selectedWeek);selectedWeek.setDate(selectedWeek.getDate()+n*7);document.getElementById("output").textContent="「週間MDを生成」を押してください。";render()}
-function getCounts(week){const counts=[0,0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<5;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
+function getCounts(week){const counts=[0,0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<6;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
 function saveMemo(){const memo=document.getElementById("memo");if(memo)localStorage.setItem("healthRebootMemo_"+weekKey(),memo.value)}
 function loadMemo(){const memo=document.getElementById("memo");if(memo)memo.value=localStorage.getItem("healthRebootMemo_"+weekKey())||""}
 function mdText(){
