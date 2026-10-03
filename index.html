@@ -34,7 +34,7 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
     <div class="weektitle" id="weekLabel"></div>
     <button class="navbtn" onclick="moveWeek(1)">次週 →</button>
   </div>
-  <div class="labels"><div></div><div class="checks"><span>🐟</span><span>🚶</span><span>🍺</span><span>🩺</span><span>🍽️</span></div></div>
+  <div class="labels"><div></div><div class="checks"><span>🐟</span><span>🚶</span><span>🍺</span><span>🩺</span><span>🍽️</span><span>🧍</span></div></div>
   <div id="days"></div>
   <div class="actions">
     <button class="primary" onclick="generateMD()">📄 週間MDを生成</button>
@@ -45,7 +45,27 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
 </div>
 <div class="card">
   <b>項目</b>
-  <div style="margin-top:10px;line-height:1.9">🐟 魚を食べた　　🚶 歩いた・運動した<br>🍺 休肝日　　　　🩺 血圧を測った<br>🍽️ 食生活を意識できた</div>
+  <div style="margin-top:10px;line-height:1.9">🐟 魚を食べた　　🚶 歩いた・運動した<br>🍺 休肝日　　　　🩺 血圧を測った<br>🍽️ 食生活を意識できた　🧍 姿勢リセット体操</div>
+</div>
+<div class="card">
+  <b>🧍 姿勢リセット体操【1日5分】</b>
+  <button class="action" onclick="showExercise()" style="margin-top:10px">体操を見る</button>
+</div>
+<div id="exerciseModal" style="display:none;position:fixed;inset:0;background:#0008;z-index:10;padding:20px;box-sizing:border-box;overflow:auto">
+  <div class="card" style="max-width:620px;margin:30px auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <b>🧍 姿勢リセット体操【1日5分】</b>
+      <button class="action" onclick="hideExercise()">閉じる</button>
+    </div>
+    <div style="margin-top:14px;line-height:1.75">
+      <p><b>① 壁立ち　30秒×2</b><br>後頭部・肩・お尻・かかとを壁に近づけて立つ。<br>※無理に頭を壁につけない。</p>
+      <p><b>② 胸を開く　10回</b><br>手を後ろで組み、肩甲骨を軽く寄せて胸を開く。3秒キープ。</p>
+      <p><b>③ 肩甲骨寄せ　10回</b><br>肘を曲げて「W」の形。肩甲骨をゆっくり寄せて戻す。</p>
+      <p><b>④ あご引き　10回</b><br>二重あごを作るイメージで、あごを後ろへ。3秒キープ。</p>
+      <p><b>⑤ 背中伸ばし　10回</b><br>背中を丸める → 胸を開く、をゆっくり繰り返す。</p>
+      <p>💡 <b>ポイント</b><br>「背筋を伸ばし続ける」より、<b>気づいたら姿勢をリセット</b>。<br>痛みが出る動きは無理せず中止。</p>
+    </div>
+  </div>
 </div>
 <div class="card">
   <b>📝 今週のひとこと</b>
@@ -54,14 +74,14 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
 </div>
 <div class="card"><b>生成されるMD</b><pre id="output">「週間MDを生成」を押してください。</pre></div>
 <script>
-const items=[["🐟","魚を食べた"],["🚶","歩いた・運動した"],["🍺","休肝日"],["🩺","血圧を測った"],["🍽️","食生活を意識できた"]];
+const items=[["🐟","魚を食べた"],["🚶","歩いた・運動した"],["🍺","休肝日"],["🩺","血圧を測った"],["🍽️","食生活を意識できた"],["🧍","姿勢リセット体操"]];
 let data=JSON.parse(localStorage.getItem("healthRebootV2")||"{}");
 if(!localStorage.getItem("healthRebootV3Migrated")){
   Object.keys(data).forEach(k=>{
     if(data[k]&&data[k][2]){
       data[k][2]=data[k][2]==="×"?"○":"";
     }
-    for(let j=0;j<5;j++){
+    for(let j=0;j<6;j++){
       if(j!==2 && data[k] && data[k][j]!=="○") data[k][j]="";
     }
   });
@@ -84,21 +104,23 @@ function render(){
 }
 function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v==="○"?"":"○";localStorage.setItem("healthRebootV2",JSON.stringify(data));render()}
 function moveWeek(n){selectedWeek=new Date(selectedWeek);selectedWeek.setDate(selectedWeek.getDate()+n*7);document.getElementById("output").textContent="「週間MDを生成」を押してください。";render()}
-function getCounts(week){const counts=[0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<5;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
+function getCounts(week){const counts=[0,0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<5;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
 function saveMemo(){const memo=document.getElementById("memo");if(memo)localStorage.setItem("healthRebootMemo_"+weekKey(),memo.value)}
 function loadMemo(){const memo=document.getElementById("memo");if(memo)memo.value=localStorage.getItem("healthRebootMemo_"+weekKey())||""}
 function mdText(){
  saveMemo();const end=new Date(selectedWeek);end.setDate(end.getDate()+6);const previous=new Date(selectedWeek);previous.setDate(previous.getDate()-7);const counts=getCounts(selectedWeek),prevCounts=getCounts(previous);const memo=localStorage.getItem("healthRebootMemo_"+weekKey())||"";
  let s="# 健康リブート週間\n\n"+selectedWeek.getFullYear()+"/"+fmt(selectedWeek)+"〜"+fmt(end)+"\n\n";
- s+="| 日付 | 🐟 | 🚶 | 🍺 | 🩺 | 🍽️ |\n|---|---|---|---|---|---|\n";
- for(let i=0;i<7;i++){const d=new Date(selectedWeek);d.setDate(d.getDate()+i);const k=key(d);const vals=[0,1,2,3,4].map(j=>data[k]?.[j]||"");s+="| "+fmt(d)+" | "+vals.join(" | ")+" |\n"}
+ s+="| 日付 | 🐟 | 🚶 | 🍺 | 🩺 | 🍽️ | 🧍 |\n|---|---|---|---|---|---|---|\n";
+ for(let i=0;i<7;i++){const d=new Date(selectedWeek);d.setDate(d.getDate()+i);const k=key(d);const vals=[0,1,2,3,4,5].map(j=>data[k]?.[j]||"");s+="| "+fmt(d)+" | "+vals.join(" | ")+" |\n"}
  s+="\n## 週間集計\n\n| 項目 | 今週 | 先週 | 差 |\n|---|---:|---:|---:|\n";
- const names=["🐟 魚","🚶 運動","🍺 休肝日","🩺 血圧","🍽️ 食生活"];
+ const names=["🐟 魚","🚶 運動","🍺 休肝日","🩺 血圧","🍽️ 食生活","🧍 姿勢"];
  for(let j=0;j<5;j++){const diff=counts[j]-prevCounts[j],sign=diff>0?"+":"";s+="| "+names[j]+" | "+counts[j]+"日 | "+prevCounts[j]+"日 | "+sign+diff+" |\n"}
  s+="\n## 📝 今週のひとこと\n\n"+(memo.trim()?memo.trim():"（なし）")+"\n";
  s+="\n## ちゃぴこレビュー用\n\nこの1週間の健康リブートをレビューしてください。\n先週との変化、できたこと、気になる傾向、来週に意識することを簡潔にコメントしてください。\n";
  return s;
 }
+function showExercise(){document.getElementById("exerciseModal").style.display="block"}
+function hideExercise(){document.getElementById("exerciseModal").style.display="none"}
 function generateMD(){document.getElementById("output").textContent=mdText()}
 async function copyMD(){const t=mdText();try{await navigator.clipboard.writeText(t);document.getElementById("output").textContent=t;alert("MDをコピーしました")}catch(e){document.getElementById("output").textContent=t;alert("コピーできませんでした。表示されたMDをコピーしてください。")}}
 function downloadMD(){const t=mdText(),blob=new Blob([t],{type:"text/markdown;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="健康リブート_"+key(selectedWeek)+".md";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)}
