@@ -13,7 +13,7 @@ h1{font-size:28px;margin:0 0 5px}.sub{color:#777;margin-bottom:18px}
 .weektitle{text-align:center;font-weight:700;flex:1}
 .navbtn,.action{border:1px solid #ccc;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer}
 .row{display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:center;margin:8px 0}
-.date{font-weight:600}.checks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.date{font-weight:600}.checks{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .btn{border:1px solid #ddd;background:#fff;border-radius:10px;padding:10px 4px;font-size:18px;cursor:pointer}
 .btn.active{background:#e8f1e8;border-color:#9ab99a}.btn.dash{background:#eee}
 .labels{display:grid;grid-template-columns:72px 1fr;gap:8px;margin-top:14px}
@@ -40,6 +40,7 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
     <button class="primary" onclick="generateMD()">📄 週間MDを生成</button>
     <button class="action" onclick="copyMD()">📋 コピー</button>
     <button class="action" onclick="downloadMD()">⬇️ MD保存</button>
+    <button class="action" onclick="exportBackup()">💾 全記録バックアップ</button>
   </div>
   <div class="hint">各ボタンは2択です。タップするたびに「○＝できた／空欄＝もう一方」に切り替わります。入力内容はこのブラウザに自動保存されます。</div>
 </div>
@@ -114,10 +115,25 @@ function mdText(){
  for(let i=0;i<7;i++){const d=new Date(selectedWeek);d.setDate(d.getDate()+i);const k=key(d);const vals=[0,1,2,3,4,5].map(j=>data[k]?.[j]||"");s+="| "+fmt(d)+" | "+vals.join(" | ")+" |\n"}
  s+="\n## 週間集計\n\n| 項目 | 今週 | 先週 | 差 |\n|---|---:|---:|---:|\n";
  const names=["🐟 魚","🚶 運動","🍺 休肝日","🩺 血圧","🍽️ 食生活","🧍 姿勢"];
- for(let j=0;j<5;j++){const diff=counts[j]-prevCounts[j],sign=diff>0?"+":"";s+="| "+names[j]+" | "+counts[j]+"日 | "+prevCounts[j]+"日 | "+sign+diff+" |\n"}
+ for(let j=0;j<6;j++){const diff=counts[j]-prevCounts[j],sign=diff>0?"+":"";s+="| "+names[j]+" | "+counts[j]+"日 | "+prevCounts[j]+"日 | "+sign+diff+" |\n"}
  s+="\n## 📝 今週のひとこと\n\n"+(memo.trim()?memo.trim():"（なし）")+"\n";
  s+="\n## ちゃぴこレビュー用\n\nこの1週間の健康リブートをレビューしてください。\n先週との変化、できたこと、気になる傾向、来週に意識することを簡潔にコメントしてください。\n";
  return s;
+}
+
+function exportBackup(){
+  saveMemo();
+  const memos={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith("healthRebootMemo_")) memos[k]=localStorage.getItem(k);
+  }
+  const backup={app:"健康リブート",version:1,exportedAt:new Date().toISOString(),data:JSON.parse(localStorage.getItem("healthRebootV2")||"{}"),memos};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="健康リブート_全記録バックアップ_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  alert("全記録のバックアップを保存しました。ファイルは消さずに保管してください。");
 }
 function showExercise(){document.getElementById("exerciseModal").style.display="block"}
 function hideExercise(){document.getElementById("exerciseModal").style.display="none"}
