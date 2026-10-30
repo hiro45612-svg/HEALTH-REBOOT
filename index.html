@@ -29,7 +29,25 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
 <h1>🌿 健康リブート</h1>
 <div class="sub">毎日30秒。1週間まとめて、ちゃぴこにレビュー。</div>
 <div class="card">
-  <div class="weeknav">
+  <div class="card" id="cloudCard">
+  <b>☁️ PC・スマホ共有設定</b>
+  <div class="hint">同じメールアドレスでログインすると、記録をクラウドで共有できます。</div>
+  <div id="signedOutArea" style="margin-top:10px">
+    <input id="loginEmail" type="email" autocomplete="email" placeholder="メールアドレス" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid #ccc;border-radius:9px;font:inherit">
+    <button class="primary" onclick="sendLoginLink()" style="margin-top:9px">ログインリンクを送る</button>
+  </div>
+  <div id="signedInArea" style="display:none;margin-top:10px">
+    <div id="signedInEmail" style="font-size:14px"></div>
+    <div class="actions">
+      <button class="action" onclick="syncNow()">☁️ クラウドと同期</button>
+      <button class="action" onclick="document.getElementById('backupImport').click()">📥 バックアップを取り込む</button>
+      <button class="action" onclick="signOutApp()">ログアウト</button>
+    </div>
+    <input id="backupImport" type="file" accept="application/json,.json" style="display:none" onchange="importBackupFile(event)">
+  </div>
+  <div class="hint" id="cloudStatus">現在はこの端末内に保存しています。ログインすると共有できます。</div>
+</div>
+<div class="weeknav">
     <button class="navbtn" onclick="moveWeek(-1)">← 前週</button>
     <div class="weektitle" id="weekLabel"></div>
     <button class="navbtn" onclick="moveWeek(1)">次週 →</button>
@@ -74,7 +92,104 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
   <textarea id="memo" placeholder="例：外食が多かった。2年前の写真より太った気がするので食生活を見直したい。" style="width:100%;box-sizing:border-box;min-height:90px;margin-top:10px;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit;resize:vertical;"></textarea>
 </div>
 <div class="card"><b>生成されるMD</b><pre id="output">「週間MDを生成」を押してください。</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL="https://kwstghgaopglcxdfwwsc.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_MB1SYLngUcmkMYa9jVJUjQ_zFvAaTuZ";
+const cloud=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let currentUser=null, syncing=false, memoSaveTimer=null;
+const cloudStatus=(msg)=>{const el=document.getElementById("cloudStatus");if(el)el.textContent=msg};
+function setCloudUI(user){
+ currentUser=user||null;
+ document.getElementById("signedOutArea").style.display=user?"none":"block";
+ document.getElementById("signedInArea").style.display=user?"block":"none";
+ document.getElementById("signedInEmail").textContent=user?"ログイン中："+(user.email||""):"";
+ if(!user)cloudStatus("現在はこの端末内に保存しています。ログインすると共有できます。");
+}
+async function sendLoginLink(){
+ const email=document.getElementById("loginEmail").value.trim();
+ if(!email){alert("メールアドレスを入力してください。");return}
+ cloudStatus("ログインリンクを送信しています…");
+ const {error}=await cloud.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+ if(error){cloudStatus("送信できませんでした："+error.message);return}
+ cloudStatus("メールを確認してください。届いたログインリンクを同じ端末で開くとログインできます。");
+}
+async function signOutApp(){
+ const {error}=await cloud.auth.signOut();
+ if(error){cloudStatus("ログアウトできませんでした："+error.message);return}
+ setCloudUI(null);
+}
+async function uploadAllLocal(){
+ if(!currentUser)return;
+ const rows=Object.entries(data).filter(([d])=>/^\d{4}-\d{2}-\d{2}$/.test(d)).map(([record_date,entries])=>({user_id:currentUser.id,record_date,entries}));
+ if(rows.length){const {error}=await cloud.from("health_reboot_daily").upsert(rows,{onConflict:"user_id,record_date"});if(error)throw error}
+ const memos=[];
+ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("healthRebootMemo_")){const week_start=k.slice("healthRebootMemo_".length);if(/^\d{4}-\d{2}-\d{2}$/.test(week_start))memos.push({user_id:currentUser.id,week_start,memo:localStorage.getItem(k)||""})}}
+ if(memos.length){const {error}=await cloud.from("health_reboot_memos").upsert(memos,{onConflict:"user_id,week_start"});if(error)throw error}
+}
+async function syncFromCloud(){
+ if(!currentUser||syncing)return;
+ syncing=true;cloudStatus("クラウドの記録を確認しています…");
+ try{
+  const {data:remote,error}=await cloud.from("health_reboot_daily").select("record_date,entries");
+  if(error)throw error;
+  if(!remote.length){await uploadAllLocal()}
+  else{
+   const remoteDates=new Set(remote.map(r=>r.record_date));
+   remote.forEach(r=>{data[r.record_date]=r.entries||{}});
+   const localOnly=Object.keys(data).filter(d=>!remoteDates.has(d));
+   if(localOnly.length){const rows=localOnly.map(d=>({user_id:currentUser.id,record_date:d,entries:data[d]||{}}));const {error:upErr}=await cloud.from("health_reboot_daily").upsert(rows,{onConflict:"user_id,record_date"});if(upErr)throw upErr}
+   const {data:remoteMemos,error:memoError}=await cloud.from("health_reboot_memos").select("week_start,memo");
+   if(memoError)throw memoError;
+   if(!remoteMemos.length){await uploadAllLocal()}
+   else{
+    const remoteWeeks=new Set(remoteMemos.map(r=>r.week_start));
+    remoteMemos.forEach(r=>localStorage.setItem("healthRebootMemo_"+r.week_start,r.memo||""));
+    const localMemos=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("healthRebootMemo_")){const week_start=k.slice("healthRebootMemo_".length);if(/^\d{4}-\d{2}-\d{2}$/.test(week_start)&&!remoteWeeks.has(week_start))localMemos.push({user_id:currentUser.id,week_start,memo:localStorage.getItem(k)||""})}}
+    if(localMemos.length){const {error:upErr}=await cloud.from("health_reboot_memos").upsert(localMemos,{onConflict:"user_id,week_start"});if(upErr)throw upErr}
+   }
+  }
+  localStorage.setItem("healthRebootV2",JSON.stringify(data));
+  render();cloudStatus("同期しました。最新の記録はクラウドに保存されています。");
+ }catch(e){cloudStatus("同期エラー："+(e.message||e))}
+ finally{syncing=false}
+}
+async function syncDateToCloud(dateKey){
+ if(!currentUser)return;
+ const {error}=await cloud.from("health_reboot_daily").upsert({user_id:currentUser.id,record_date:dateKey,entries:data[dateKey]||{}},{onConflict:"user_id,record_date"});
+ if(error)cloudStatus("保存エラー："+error.message);
+ else cloudStatus("クラウドに保存しました。");
+}
+async function syncMemoToCloud(){
+ if(!currentUser)return;
+ const {error}=await cloud.from("health_reboot_memos").upsert({user_id:currentUser.id,week_start:weekKey(),memo:document.getElementById("memo").value||""},{onConflict:"user_id,week_start"});
+ if(error)cloudStatus("メモ保存エラー："+error.message);
+}
+async function syncNow(){await syncFromCloud()}
+async function importBackupFile(event){
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(!currentUser){alert("先にログインしてください。");event.target.value="";return}
+ try{
+  const backup=JSON.parse(await file.text());
+  if(backup.app!=="健康リブート"||!backup.data||typeof backup.data!=="object")throw new Error("健康リブートのバックアップファイルではありません。");
+  const merged={...data};
+  Object.entries(backup.data).forEach(([d,entries])=>{merged[d]={...(merged[d]||{}),...(entries||{})}});
+  data=merged;localStorage.setItem("healthRebootV2",JSON.stringify(data));
+  Object.entries(backup.memos||{}).forEach(([k,v])=>{if(k.startsWith("healthRebootMemo_"))localStorage.setItem(k,String(v??""))});
+  await uploadAllLocal();render();cloudStatus("バックアップを取り込み、クラウドへ保存しました。");
+  alert("バックアップの取り込みが完了しました。PCでも同じアカウントでログインしてください。");
+ }catch(e){alert("取り込みに失敗しました："+(e.message||e))}
+ event.target.value="";
+}
+cloud.auth.onAuthStateChange((event,session)=>{
+ const user=session&&session.user?session.user:null;setCloudUI(user);
+ if(user&&event!=="INITIAL_SESSION")setTimeout(()=>syncFromCloud(),0);
+});
+cloud.auth.getSession().then(({data:sessionData})=>{
+ const user=sessionData&&sessionData.session?sessionData.session.user:null;setCloudUI(user);
+ if(user)syncFromCloud();
+});
 const items=[["🐟","魚を食べた"],["🚶","歩いた・運動した"],["🍺","休肝日"],["🩺","血圧を測った"],["🍽️","食生活を意識できた"],["🧍","姿勢リセット体操"]];
 let data=JSON.parse(localStorage.getItem("healthRebootV2")||"{}");
 if(!localStorage.getItem("healthRebootV3Migrated")){
@@ -103,10 +218,10 @@ function render(){
   items.forEach(([icon,name],idx)=>{const b=document.createElement("button");const v=data[k][idx]||"";b.className="btn";b.textContent=icon;if(v==="○")b.classList.add("active");b.title=name+": "+(v==="○"?"○":"空欄");b.onclick=()=>cycle(k,idx);grid.appendChild(b)});box.appendChild(row)}
  loadMemo();
 }
-function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v==="○"?"":"○";localStorage.setItem("healthRebootV2",JSON.stringify(data));render()}
+function cycle(k,idx){const v=data[k]?.[idx]||"";if(!data[k])data[k]={};data[k][idx]=v==="○"?"":"○";localStorage.setItem("healthRebootV2",JSON.stringify(data));render();syncDateToCloud(k)}
 function moveWeek(n){selectedWeek=new Date(selectedWeek);selectedWeek.setDate(selectedWeek.getDate()+n*7);document.getElementById("output").textContent="「週間MDを生成」を押してください。";render()}
 function getCounts(week){const counts=[0,0,0,0,0,0];for(let i=0;i<7;i++){const d=new Date(week);d.setDate(d.getDate()+i);const k=key(d);for(let j=0;j<6;j++)if(data[k]?.[j]==="○")counts[j]++}return counts}
-function saveMemo(){const memo=document.getElementById("memo");if(memo)localStorage.setItem("healthRebootMemo_"+weekKey(),memo.value)}
+function saveMemo(){const memo=document.getElementById("memo");if(memo){localStorage.setItem("healthRebootMemo_"+weekKey(),memo.value);if(currentUser){clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(syncMemoToCloud,700)}}}
 function loadMemo(){const memo=document.getElementById("memo");if(memo)memo.value=localStorage.getItem("healthRebootMemo_"+weekKey())||""}
 function mdText(){
  saveMemo();const end=new Date(selectedWeek);end.setDate(end.getDate()+6);const previous=new Date(selectedWeek);previous.setDate(previous.getDate()-7);const counts=getCounts(selectedWeek),prevCounts=getCounts(previous);const memo=localStorage.getItem("healthRebootMemo_"+weekKey())||"";
