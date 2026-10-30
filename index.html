@@ -143,7 +143,7 @@ async function syncFromCloud(){
    if(memoError)throw memoError;
    if(!remoteMemos.length){
     const localMemos=[];
-    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("healthRebootMemo_")){const week_start=k.slice("healthRebootMemo_".length);if(/^\\d{4}-\\d{2}-\\d{2}$/.test(week_start))localMemos.push({user_id:currentUser.id,week_start,memo:localStorage.getItem(k)||""})}}
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("healthRebootMemo_")){const week_start=k.slice("healthRebootMemo_".length);if(/^\d{4}-\d{2}-\d{2}$/.test(week_start))localMemos.push({user_id:currentUser.id,week_start,memo:localStorage.getItem(k)||""})}}
     if(localMemos.length){const {error:upErr}=await cloud.from("health_reboot_memos").upsert(localMemos,{onConflict:"user_id,week_start"});if(upErr)throw upErr}
    }
    else{
