@@ -28,8 +28,7 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
 <body>
 <h1>🌿 健康リブート</h1>
 <div class="sub">毎日30秒。1週間まとめて、ちゃぴこにレビュー。</div>
-<div class="card">
-  <div class="card" id="cloudCard">
+<div class="card" id="cloudCard">
   <b>☁️ PC・スマホ共有設定</b>
   <div class="hint">同じメールアドレスでログインすると、記録をクラウドで共有できます。</div>
   <div id="signedOutArea" style="margin-top:10px">
@@ -47,7 +46,8 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
   </div>
   <div class="hint" id="cloudStatus">現在はこの端末内に保存しています。ログインすると共有できます。</div>
 </div>
-<div class="weeknav">
+<div class="card">
+  <div class="weeknav">
     <button class="navbtn" onclick="moveWeek(-1)">← 前週</button>
     <div class="weektitle" id="weekLabel"></div>
     <button class="navbtn" onclick="moveWeek(1)">次週 →</button>
@@ -60,7 +60,7 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
     <button class="action" onclick="downloadMD()">⬇️ MD保存</button>
     <button class="action" onclick="exportBackup()">💾 全記録バックアップ</button>
   </div>
-  <div class="hint">各ボタンは2択です。タップするたびに「○＝できた／空欄＝もう一方」に切り替わります。入力内容はこのブラウザに自動保存されます。</div>
+  <div class="hint">各ボタンは2択です。タップするたびに「○＝できた／空欄＝もう一方」に切り替わります。入力内容はこの端末に自動保存され、ログイン中はクラウドにも保存されます。</div>
 </div>
 <div class="card">
   <b>項目</b>
