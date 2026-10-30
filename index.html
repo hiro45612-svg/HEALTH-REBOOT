@@ -92,7 +92,7 @@ pre{white-space:pre-wrap;background:#f2f3f0;padding:14px;border-radius:10px;font
   <textarea id="memo" placeholder="例：外食が多かった。2年前の写真より太った気がするので食生活を見直したい。" style="width:100%;box-sizing:border-box;min-height:90px;margin-top:10px;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit;resize:vertical;"></textarea>
 </div>
 <div class="card"><b>生成されるMD</b><pre id="output">「週間MDを生成」を押してください。</pre></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL="https://kwstghgaopglcxdfwwsc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_MB1SYLngUcmkMYa9jVJUjQ_zFvAaTuZ";
@@ -141,7 +141,11 @@ async function syncFromCloud(){
    if(localOnly.length){const rows=localOnly.map(d=>({user_id:currentUser.id,record_date:d,entries:data[d]||{}}));const {error:upErr}=await cloud.from("health_reboot_daily").upsert(rows,{onConflict:"user_id,record_date"});if(upErr)throw upErr}
    const {data:remoteMemos,error:memoError}=await cloud.from("health_reboot_memos").select("week_start,memo");
    if(memoError)throw memoError;
-   if(!remoteMemos.length){await uploadAllLocal()}
+   if(!remoteMemos.length){
+    const localMemos=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("healthRebootMemo_")){const week_start=k.slice("healthRebootMemo_".length);if(/^\\d{4}-\\d{2}-\\d{2}$/.test(week_start))localMemos.push({user_id:currentUser.id,week_start,memo:localStorage.getItem(k)||""})}}
+    if(localMemos.length){const {error:upErr}=await cloud.from("health_reboot_memos").upsert(localMemos,{onConflict:"user_id,week_start"});if(upErr)throw upErr}
+   }
    else{
     const remoteWeeks=new Set(remoteMemos.map(r=>r.week_start));
     remoteMemos.forEach(r=>localStorage.setItem("healthRebootMemo_"+r.week_start,r.memo||""));
